@@ -1,0 +1,3 @@
+DROP TABLE UF EXISTS accounts;
+DROP TABLE UF EXISTS entries;
+DROP TABLE UF EXISTS transfers;
