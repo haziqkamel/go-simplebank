@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/haziqkamel/simplebank/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,7 +15,7 @@ func TestTransferTx(t *testing.T) {
 	account2 := createRandomAccount(t)
 
 	n := 5
-	amount := int64(10)
+	amount := util.RandomInt(0, 1000)
 
 	errs := make(chan error)
 	results := make(chan TransferTxResult)
