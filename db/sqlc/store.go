@@ -26,7 +26,7 @@ func NewStore(db *sql.DB) *Store {
 // Otherwise, the transaction is committed and nil is returned.
 func (store *Store) ExecTx(ctx context.Context, fn func(*Queries) error) error {
 	tx, err := store.db.BeginTx(ctx, nil)
-	
+
 	if err != nil {
 		return err
 	}
@@ -43,11 +43,11 @@ func (store *Store) ExecTx(ctx context.Context, fn func(*Queries) error) error {
 }
 
 type TransferTxResult struct {
-	FromAccount Account `json:"from_account"`
-	ToAccount   Account `json:"to_account"`
+	FromAccount Account  `json:"from_account"`
+	ToAccount   Account  `json:"to_account"`
 	Transfer    Transfer `json:"transfer"`
-	FromEntry   Entry `json:"from_entry"`
-	ToEntry     Entry `json:"to_entry"`
+	FromEntry   Entry    `json:"from_entry"`
+	ToEntry     Entry    `json:"to_entry"`
 }
 
 func (store *Store) TransferTx(ctx context.Context, arg CreateTransferParams) (TransferTxResult, error) {
@@ -83,7 +83,23 @@ func (store *Store) TransferTx(ctx context.Context, arg CreateTransferParams) (T
 			return err
 		}
 
-		// TODO: update accounts' balance
+		result.FromAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+			ID:     arg.FromAccountID,
+			Amount: -arg.Amount,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		result.ToAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+			ID:     arg.ToAccountID,
+			Amount: arg.Amount,
+		})
+
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})
