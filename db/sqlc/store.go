@@ -52,9 +52,13 @@ type TransferTxResult struct {
 
 func (store *Store) TransferTx(ctx context.Context, arg CreateTransferParams) (TransferTxResult, error) {
 	var result TransferTxResult
+	// Perform a transaction to create a transfer between two accounts and update their balances and transaction history.
+	// The transfer amount is deducted from the 'FromAccountID' and added to the 'ToAccountID'.
+	// Returns the created transfer, entries for both accounts, and updated balances for both accounts.
 	err := store.ExecTx(ctx, func(q *Queries) error {
 		var err error
 
+		// Create the transfer record
 		result.Transfer, err = q.CreateTransfer(ctx, CreateTransferParams{
 			FromAccountID: arg.FromAccountID,
 			ToAccountID:   arg.ToAccountID,
@@ -65,6 +69,7 @@ func (store *Store) TransferTx(ctx context.Context, arg CreateTransferParams) (T
 			return err
 		}
 
+		// Create an entry for the 'FromAccountID' with a negative amount to deduct the transfer amount
 		result.FromEntry, err = q.CreateEntry(ctx, CreateEntryParams{
 			AccountID: arg.FromAccountID,
 			Amount:    -arg.Amount,
@@ -74,6 +79,7 @@ func (store *Store) TransferTx(ctx context.Context, arg CreateTransferParams) (T
 			return err
 		}
 
+		// Create an entry for the 'ToAccountID' with the transfer amount to add to the balance
 		result.ToEntry, err = q.CreateEntry(ctx, CreateEntryParams{
 			AccountID: arg.ToAccountID,
 			Amount:    arg.Amount,
@@ -83,25 +89,59 @@ func (store *Store) TransferTx(ctx context.Context, arg CreateTransferParams) (T
 			return err
 		}
 
-		result.FromAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
-			ID:     arg.FromAccountID,
-			Amount: -arg.Amount,
-		})
+		// Update the balances of the accounts
+		// To prevent deadlock, we need to ensure that the accounts are updated in a consistent order.
+		// One way to achieve this is by acquiring locks on the accounts in a specific order.
+		// In this case, we can order the accounts based on their IDs and acquire locks in ascending order.
+		// By doing so, we guarantee that no two transactions will acquire locks in opposite order, preventing deadlock.
 
-		if err != nil {
-			return err
-		}
+		// Determine the order of updating the accounts
+		if arg.FromAccountID < arg.ToAccountID {
+			// If 'FromAccountID' is less than 'ToAccountID', deduct the transfer amount from 'FromAccountID' first
+			result.FromAccount, result.ToAccount, err = addMoney(ctx, q, arg.FromAccountID, arg.ToAccountID, -arg.Amount, arg.Amount)
 
-		result.ToAccount, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
-			ID:     arg.ToAccountID,
-			Amount: arg.Amount,
-		})
+			if err != nil {
+				return err
+			}
 
-		if err != nil {
-			return err
+		} else {
+			// If 'FromAccountID' is greater than or equal to 'ToAccountID', add the transfer amount to 'ToAccountID' first
+			result.ToAccount, result.FromAccount, err = addMoney(ctx, q, arg.ToAccountID, arg.FromAccountID, arg.Amount, -arg.Amount)
+
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
 	})
 	return result, err
+}
+
+func addMoney(
+	ctx context.Context,
+	q *Queries,
+	accountID1, accountID2 int64,
+	amount1, amount2 int64,
+) (account1 Account, account2 Account, err error) {
+
+	account1, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+		ID:     accountID1,
+		Amount: amount1,
+	})
+
+	if err != nil {
+		return
+	}
+
+	account2, err = q.AddAccountBalance(ctx, AddAccountBalanceParams{
+		ID:     accountID2,
+		Amount: amount2,
+	})
+
+	if err != nil {
+		return
+	}
+
+	return
 }
