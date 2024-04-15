@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -76,8 +75,6 @@ func (server *Server) listAccounts(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-
-	fmt.Println(req)
 
 	arg := db.ListAccountsParams{
 		Limit:  req.PageSize,
