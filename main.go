@@ -15,7 +15,7 @@ const (
 	DefaultPort   = "8080"
 	serverAddress = "localhost"
 	dbDriver      = "postgres"
-	dbSource      = "postgresql://root:secret@localhost:5432/simplebank?sslmode=disable"
+	dbSource      = "postgresql://root:secret@localhost:5432/simple_bank?sslmode=disable"
 )
 
 func main() {
