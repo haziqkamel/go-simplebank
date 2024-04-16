@@ -6,14 +6,21 @@ import (
 	"fmt"
 )
 
-type Store struct {
+// Interface for all db queries
+type Store interface {
+	Querier
+	TransferTx(ctx context.Context, arg CreateTransferParams) (TransferTxResult, error)
+}
+
+// SQLStore provides all functions to execute db queries and transactions
+type SQLStore struct {
 	*Queries
 	db *sql.DB
 }
 
 // NewStore creates a new Store
-func NewStore(db *sql.DB) *Store {
-	return &Store{
+func NewStore(db *sql.DB) Store {
+	return &SQLStore{
 		db:      db,
 		Queries: New(db),
 	}
@@ -24,7 +31,7 @@ func NewStore(db *sql.DB) *Store {
 // The provided function `fn` is called with a `Queries` instance that uses the transaction.
 // If the function returns an error, the transaction is rolled back and the error is returned.
 // Otherwise, the transaction is committed and nil is returned.
-func (store *Store) ExecTx(ctx context.Context, fn func(*Queries) error) error {
+func (store *SQLStore) ExecTx(ctx context.Context, fn func(*Queries) error) error {
 	tx, err := store.db.BeginTx(ctx, nil)
 
 	if err != nil {
@@ -50,7 +57,7 @@ type TransferTxResult struct {
 	ToEntry     Entry    `json:"to_entry"`
 }
 
-func (store *Store) TransferTx(ctx context.Context, arg CreateTransferParams) (TransferTxResult, error) {
+func (store *SQLStore) TransferTx(ctx context.Context, arg CreateTransferParams) (TransferTxResult, error) {
 	var result TransferTxResult
 	// Perform a transaction to create a transfer between two accounts and update their balances and transaction history.
 	// The transfer amount is deducted from the 'FromAccountID' and added to the 'ToAccountID'.
