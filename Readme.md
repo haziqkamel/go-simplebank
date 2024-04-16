@@ -17,5 +17,16 @@ This is a simple bank project that allows users to manage their accounts and per
 5. Run database migrations: `make migrateup`
 6. Generate SQLC code: `make sqlc`
 
+## Mocking
+
+### Required:
+1. mockgen
+2. mockegen/model
+
+Then run command below:
+```
+mockgen -package mockdb -destination db/mock/store.go github.com/haziqkamel/simplebank/db/sqlc Store
+```
+
 ## Contact
 For any inquiries or support, please contact us at [haziqkamel@outlook.com](mailto:haziqkamel@outlook.com).
